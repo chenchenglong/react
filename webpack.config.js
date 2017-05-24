@@ -1,33 +1,68 @@
-var webpack = require('webpack');
-var path = require('path');
+const glob = require('glob');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
+const path = require('path');
+const BUILD_DIR = path.resolve(__dirname, 'dist');
+const APP_DIR = path.resolve(__dirname, 'src');
 
-var BUILD_DIR = path.resolve(__dirname, 'dist');
-var APP_DIR = path.resolve(__dirname, 'src/app');
+// process.env.NODE_ENV = 'development';
+// let env = process.env.NODE_ENV || 'beta';
+// console.log(`Running in ${env} mode.`);
 
-var config = {
-    entry: APP_DIR + '/index.jsx',
+let jsx = glob.sync(`./src/pages/*/index.jsx`).reduce((prev, curr) => {
+    prev[curr.slice(6, -4)] = [curr];
+    return prev;
+}, {});
+
+let html = glob.sync(`./src/pages/*/index.html`).map(item => {
+    return new HtmlWebpackPlugin({
+        item: item.slice(6, -5),
+        data: {
+            build: false
+        },
+        filename: item.substr(6),
+        template: `ejs-compiled-loader!${item}`,
+        inject: false,
+        minify: false
+    });
+});
+
+let config = {
+    entry: jsx,
     output: {
         path: BUILD_DIR,
-        filename: 'bundle.js'
+        publicPath: '/',
+        filename: '[name].[chunkhash].js',
+    },
+    resolve: {
+        extensions: ['.js', '.jsx'],
+        alias: {
+            'src': path.resolve(__dirname, APP_DIR),
+            'components': path.resolve(__dirname, `${APP_DIR}/modules/components`),
+            'common': path.resolve(__dirname, `${APP_DIR}/modules/common`)
+        }
     },
     module: {
         rules: [
             {
-                test: /\.jsx$/,
+                test: /\.(js|jsx)$/,
                 use: [
                     'babel-loader',
                 ],
                 include: [
-                    // path.resolve(__dirname, "app")
                     APP_DIR
                 ],
             }
         ]
     },
+    plugins: [
+        // new webpack.optimize.UglifyJsPlugin(),
+    ].concat(html),
+    devtool: 'eval-source-map',
     devServer: {
         host: '0.0.0.0',
         port: 9090,
-        contentBase: path.resolve('./dist'),
+        contentBase: BUILD_DIR,
         historyApiFallback: true,
         inline: true,
         stats: {

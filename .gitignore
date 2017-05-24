@@ -9,4 +9,6 @@ npm-debug.log
 .travis.yml
 .sass-cache/
 .project
+dist
 *.zip
+*.log
